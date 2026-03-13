@@ -17,17 +17,19 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 import dagshub
-dagshub.init(repo_owner='pritesh13590', repo_name='water-potability-dagshub', mlflow=True)
+dagshub.init(repo_owner='pritesh13590', repo_name='model_registry', mlflow=True)
+
+from mlflow.models import infer_signature # input and output schema
 
 # -----------------------------
 # Set Experiment Name
 # -----------------------------
-mlflow.set_experiment('water_exp_hyper_rf')
+mlflow.set_experiment('water_exp_hyper_rf_model_reg')
 
 # -----------------------------
 # Set Tracking URI
 # -----------------------------
-mlflow.set_tracking_uri('https://dagshub.com/pritesh13590/water-potability-dagshub.mlflow')
+mlflow.set_tracking_uri('https://dagshub.com/pritesh13590/model_registry.mlflow')
 
 # -----------------------------
 # Load Dataset
@@ -70,13 +72,13 @@ y_test = test_processed_data['Potability']
 # -----------------------------
 # Model Training
 # -----------------------------
-with mlflow.start_run(run_name="RandomForest_Hyperparameter_Tuning"): # parent run
+with mlflow.start_run(run_name="RandomForest_Hyperparameter_Tuning_model_reg"): # parent run
 
     clf = RandomForestClassifier(random_state=42)
 
     params = {
         'n_estimators':[100,200,300,500,1000],
-        'max_depth':[None,10,20,30,40]
+        'max_depth':[None,4,5,6,10]
     }
 
     search = RandomizedSearchCV(
@@ -176,10 +178,7 @@ with mlflow.start_run(run_name="RandomForest_Hyperparameter_Tuning"): # parent r
     # -----------------------------
     # Log Model
     # -----------------------------
-    mlflow.sklearn.log_model(
-        sk_model=best_model,
-        name="RandomForestClassifier"
-    )
+    #mlflow.sklearn.log_model(sk_model=best_model, name="RandomForestClassifier")
 
     # -----------------------------
     # Log Code
@@ -200,3 +199,12 @@ with mlflow.start_run(run_name="RandomForest_Hyperparameter_Tuning"): # parent r
 
     mlflow.log_input(train_df,"train")
     mlflow.log_input(test_df,"test")
+
+    # -----------------------------
+    # Register Model and Log Model
+    # -----------------------------
+    signature = infer_signature(X_test, search.best_estimator_.predict(X_test))
+    mlflow.sklearn.log_model(best_model, name="Best model", signature=signature)
+
+
+
